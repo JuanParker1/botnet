@@ -1,9 +1,9 @@
-docker_up: dockerbuild down
+up: dockerbuild down
 	@echo ">> running docker container..."
 	docker run -d --name master_service -p 80:80 -p 443:443 master_api
 	@echo
 
-up: build
+local_up: build
 	@echo ">> running application binary..."
 	./master_local
 	@echo
