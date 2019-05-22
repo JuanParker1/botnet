@@ -21,6 +21,7 @@ func NewMaster() (*Master, error) {
 	if err != nil {
 		return nil, err
 	}
+	log.Printf("[master] public key: \n%s", string(pub))
 	return &Master{
 		masterPrivKey:  priv,
 		masterPubKey:   string(pub),
