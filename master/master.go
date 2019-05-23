@@ -5,13 +5,14 @@ import (
 	"log"
 
 	"github.com/adrianosela/botnet/lib/encryption"
+	"github.com/adrianosela/botnet/lib/protocol"
 )
 
 // Master handles all communication between master and slaves
 type Master struct {
 	masterPrivKey  *rsa.PrivateKey
 	masterPubKey   string
-	receiveMsgChan chan *Msg // Channel for receiving de-crypted messages requests
+	receiveMsgChan chan *protocol.Event // Channel for receiving de-crypted messages requests
 	slaves         map[string]*SlaveCtrl
 }
 
@@ -25,7 +26,7 @@ func NewMaster() (*Master, error) {
 	return &Master{
 		masterPrivKey:  priv,
 		masterPubKey:   string(pub),
-		receiveMsgChan: make(chan *Msg),
+		receiveMsgChan: make(chan *protocol.Event),
 		slaves:         make(map[string]*SlaveCtrl),
 	}, nil
 }
@@ -35,8 +36,8 @@ func (m *Master) Start() {
 	for {
 		select {
 		// handle the next message
-		case msg := <-m.receiveMsgChan:
-			m.handleMessage(msg)
+		case event := <-m.receiveMsgChan:
+			m.handleMessage(event)
 		}
 	}
 }
@@ -58,16 +59,16 @@ func (m *Master) DeregisterSlave(slaveID string) {
 	log.Printf("[%s] left net", slaveID)
 }
 
-func (m *Master) handleMessage(msg *Msg) {
+func (m *Master) handleMessage(eve *protocol.Event) {
 	//TODO: handle incoming messages from slaves
-	log.Println(msg.String())
+	log.Println(eve)
 }
 
-func (m *Master) broadcastMessage(msg *Msg) {
+func (m *Master) broadcastMessage(event *protocol.Event) {
 	log.Printf("[MASTER] broadcasting message to %d slaves\n", len(m.slaves))
 	for slaveID := range m.slaves {
 		select {
-		case m.slaves[slaveID].MsgChan <- msg:
+		case m.slaves[slaveID].MsgChan <- event:
 		default:
 			close(m.slaves[slaveID].MsgChan)
 			delete(m.slaves, slaveID)

