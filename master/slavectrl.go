@@ -30,7 +30,7 @@ type SlaveCtrl struct {
 }
 
 // NewSlaveCtrl is the constructor for a slave controller abstraction
-func NewSlaveCtrl(conn *websocket.Conn, slavePubKey string) (*SlaveCtrl, error) {
+func NewSlaveCtrl(m *Master, slavePubKey string, conn *websocket.Conn) (*SlaveCtrl, error) {
 	pubKey, err := encryption.DecodePubKeyPEM([]byte(slavePubKey))
 	if err != nil {
 		return nil, fmt.Errorf("could not decode pub key: %s", err)
@@ -40,6 +40,7 @@ func NewSlaveCtrl(conn *websocket.Conn, slavePubKey string) (*SlaveCtrl, error) 
 		slavePubKey: pubKey,
 		WSConn:      conn,
 		MsgChan:     make(chan *Msg),
+		Master:      m,
 	}, nil
 }
 
@@ -48,13 +49,19 @@ func (s *SlaveCtrl) reader() {
 	s.WSConn.SetReadDeadline(time.Now().Add(pongWait))
 	s.WSConn.SetPongHandler(func(string) error { s.WSConn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
-		_, encryptedMessage, err := s.WSConn.ReadMessage()
+		msgType, encryptedMessage, err := s.WSConn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WS connection was closed unexpectedly: %s", err)
 			}
 			break
 		}
+
+		// discard all non binary messages
+		if msgType != 2 {
+			continue
+		}
+
 		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, s.Master.masterPrivKey)
 		if err != nil {
 			log.Printf("could not decrypt message from slave %s: %s", s.id, err)

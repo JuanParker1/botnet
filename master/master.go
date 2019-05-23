@@ -17,7 +17,7 @@ type Master struct {
 
 // NewMaster is the constructor for a Master
 func NewMaster() (*Master, error) {
-	priv, pub, err := encryption.GenerateRSAKeyPair()
+	priv, pub, err := encryption.GenerateRSAKeyPair(4096)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +59,7 @@ func (m *Master) DeregisterSlave(slaveID string) {
 }
 
 func (m *Master) handleMessage(msg *Msg) {
-	//TODO
+	//TODO: handle incoming messages from slaves
 	log.Println(msg.String())
 }
 
