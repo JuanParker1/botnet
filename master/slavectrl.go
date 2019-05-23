@@ -36,7 +36,7 @@ func NewSlaveCtrl(m *Master, slavePubKey string, conn *websocket.Conn) (*SlaveCt
 		return nil, fmt.Errorf("could not decode pub key: %s", err)
 	}
 	return &SlaveCtrl{
-		id:          uuid.Must(uuid.NewV4()).String(),
+		id:          uuid.NewV4().String(),
 		slavePubKey: pubKey,
 		WSConn:      conn,
 		MsgChan:     make(chan *Msg),

