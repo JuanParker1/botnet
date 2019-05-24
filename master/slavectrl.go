@@ -26,7 +26,7 @@ type SlaveCtrl struct {
 	id          string
 	slavePubKey *rsa.PublicKey
 	WSConn      *websocket.Conn
-	MsgChan     chan *protocol.Event
+	CommandChan chan *protocol.Command
 	Master      *Master
 }
 
@@ -40,7 +40,7 @@ func NewSlaveCtrl(m *Master, slavePubKey string, conn *websocket.Conn) (*SlaveCt
 		id:          uuid.NewV4().String(),
 		slavePubKey: pubKey,
 		WSConn:      conn,
-		MsgChan:     make(chan *protocol.Event),
+		CommandChan: make(chan *protocol.Command),
 		Master:      m,
 	}, nil
 }
@@ -68,12 +68,12 @@ func (s *SlaveCtrl) reader() {
 			log.Printf("could not decrypt message from slave %s: %s", s.id, err)
 			continue
 		}
-		var event protocol.Event
-		if err = json.Unmarshal(jsonMsg, &event); err != nil {
+		var msg protocol.Message
+		if err = json.Unmarshal(jsonMsg, &msg); err != nil {
 			log.Printf("could not unmarshal message from slave %s: %s", s.id, err)
 			continue
 		}
-		s.Master.receiveMsgChan <- &event
+		s.Master.receiveMsgChan <- &msg
 	}
 }
 
@@ -85,18 +85,18 @@ func (s *SlaveCtrl) writer() {
 	}()
 	for {
 		select {
-		case event, ok := <-s.MsgChan:
+		case cmd, ok := <-s.CommandChan:
 			s.WSConn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				log.Println("we shouldnt get here though")
 				s.WSConn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			eventJSONBytes, err := json.Marshal(event)
+			cmdJSONBytes, err := json.Marshal(cmd)
 			if err != nil {
 				return
 			}
-			encryptedEvent, err := encryption.EncryptMessage(eventJSONBytes, s.slavePubKey)
+			encryptedEvent, err := encryption.EncryptMessage(cmdJSONBytes, s.slavePubKey)
 			if err != nil {
 				return
 			}

