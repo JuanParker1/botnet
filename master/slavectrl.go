@@ -18,7 +18,7 @@ const (
 	writeWait      = 10 * time.Second    // Time allowed to write a message to the peer
 	pongWait       = 60 * time.Second    // Time allowed to read the next pong message from the peer
 	pingPeriod     = (pongWait * 9) / 10 // Send pings to peer with this period. Must be less than pongWait
-	maxMessageSize = 512                 // Maximum message size allowed from peer
+	maxMessageSize = 1024                // Maximum message size allowed from peer
 )
 
 // SlaveCtrl holds the information the master needs from a connected slave
@@ -50,6 +50,7 @@ func (s *SlaveCtrl) reader() {
 	s.WSConn.SetReadDeadline(time.Now().Add(pongWait))
 	s.WSConn.SetPongHandler(func(string) error { s.WSConn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 	for {
+		// get the next message
 		msgType, encryptedMessage, err := s.WSConn.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
@@ -57,12 +58,11 @@ func (s *SlaveCtrl) reader() {
 			}
 			break
 		}
-
-		// discard all non binary messages
+		// discard all non binary type (non encrypted) messages
 		if msgType != 2 {
 			continue
 		}
-
+		// decrypt the JSON event and unmarshal onto the event type
 		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, s.Master.masterPrivKey)
 		if err != nil {
 			log.Printf("could not decrypt message from slave %s: %s", s.id, err)
@@ -85,28 +85,22 @@ func (s *SlaveCtrl) writer() {
 	}()
 	for {
 		select {
-		case message, ok := <-s.MsgChan:
+		case event, ok := <-s.MsgChan:
 			s.WSConn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
+				log.Println("we shouldnt get here though")
 				s.WSConn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
-			w, err := s.WSConn.NextWriter(websocket.TextMessage)
+			eventJSONBytes, err := json.Marshal(event)
 			if err != nil {
 				return
 			}
-			msgBytes, err := json.Marshal(message)
+			encryptedEvent, err := encryption.EncryptMessage(eventJSONBytes, s.slavePubKey)
 			if err != nil {
 				return
 			}
-			encryptedMsg, err := encryption.EncryptMessage(msgBytes, s.slavePubKey)
-			if err != nil {
-				return
-			}
-			w.Write(encryptedMsg)
-			if err := w.Close(); err != nil {
-				return
-			}
+			s.WSConn.WriteMessage(2, encryptedEvent)
 		case <-ticker.C:
 			s.WSConn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := s.WSConn.WriteMessage(websocket.PingMessage, nil); err != nil {

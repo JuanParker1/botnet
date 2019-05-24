@@ -17,9 +17,8 @@ type Event struct {
 type EventType string
 
 var (
-	// EventTypeLog logs that a message was received
-	EventTypeLog = EventType("LOG")
-
+	// EventTypeAck is a master-to-slave acknowledgement of a message
+	EventTypeAck = EventType("ACK")
 	/*
 	 * add event types here
 	 */
@@ -28,8 +27,8 @@ var (
 // HandleMasterEvent handles a single event from the master node
 func HandleMasterEvent(eve Event) {
 	switch eve.Type {
-	case EventTypeLog:
-		log.Printf("received log event type at %d, full event: %v", time.Now().UnixNano(), eve)
+	case EventTypeAck:
+		log.Printf("master acknowledged slave message at %d, full event: %v", time.Now().UnixNano(), eve)
 		return
 	default:
 		log.Printf("received unknown event type at %d, full event: %v", time.Now().UnixNano(), eve)

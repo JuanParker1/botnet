@@ -1,7 +1,9 @@
 package master
 
 import (
+	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -47,32 +49,37 @@ func (c *Config) joinHandler(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("could not upgrade to WS connection"))
 		return
 	}
-
-	// first message completes the handshake, when the slave provides a JSON join
-	// request, which has been encrypted with the master's public key
-	_, encryptedMessage, err := conn.ReadMessage()
+	// receive join request in first message from socket
+	JoinRequest, err := completeHandshake(conn, c.botMaster.masterPrivKey)
 	if err != nil {
-		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-			log.Printf("WS connection was closed unexpectedly: %s", err)
-		}
-	}
-
-	jsonMsg, err := encryption.DecryptMessage(encryptedMessage, c.botMaster.masterPrivKey)
-	if err != nil {
-		log.Printf("could not decrypt message from new slave: %s", err)
+		log.Printf("received join request but failed to complete net handshake: %s", err)
 		return
 	}
-	var jr *JoinRequest
-	if err := json.Unmarshal(jsonMsg, &jr); err != nil {
-		log.Printf("could not unmarshal message from new slavde slave: %s", err)
-		return
-	}
-
 	// create new slave
-	slave, err := NewSlaveCtrl(c.botMaster, jr.Key, conn)
+	slave, err := NewSlaveCtrl(c.botMaster, JoinRequest.Key, conn)
 	if err != nil {
 		log.Printf("could not create new slave controller for new slave: %s", err)
 		return
 	}
 	c.botMaster.EnrolSlave(slave)
+}
+
+func completeHandshake(conn *websocket.Conn, masterDecryptionKey *rsa.PrivateKey) (*JoinRequest, error) {
+	// first message completes the handshake, when the slave provides a JSON join
+	// request, which has been encrypted with the master's public key
+	_, encryptedMessage, err := conn.ReadMessage()
+	if err != nil {
+		if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+			return nil, fmt.Errorf("WS connection was closed unexpectedly: %s", err)
+		}
+	}
+	jsonMsg, err := encryption.DecryptMessage(encryptedMessage, masterDecryptionKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt message from new slave: %s", err)
+	}
+	var jr *JoinRequest
+	if err := json.Unmarshal(jsonMsg, &jr); err != nil {
+		return nil, fmt.Errorf("could not unmarshal message from new slavde slave: %s", err)
+	}
+	return jr, nil
 }
