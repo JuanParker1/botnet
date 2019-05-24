@@ -63,7 +63,7 @@ func (b *BotCtrl) reader() {
 			continue
 		}
 		// decrypt the JSON event and unmarshal onto the event type
-		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, b.CC.masterPrivKey)
+		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, b.CC.msgDecryptKey)
 		if err != nil {
 			log.Printf("could not decrypt message from bot %s: %s", b.id, err)
 			continue
@@ -73,7 +73,7 @@ func (b *BotCtrl) reader() {
 			log.Printf("could not unmarshal message from bot %s: %s", b.id, err)
 			continue
 		}
-		b.CC.receiveMsgChan <- &msg
+		b.CC.recvMsgChan <- &msg
 	}
 }
 
