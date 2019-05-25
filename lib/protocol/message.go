@@ -1,5 +1,13 @@
 package protocol
 
+import (
+	"crypto/rsa"
+	"encoding/json"
+	"fmt"
+
+	"github.com/adrianosela/botnet/lib/encryption"
+)
+
 // Message is a slave-to-master message or response
 type Message struct {
 	BotID string      `json:"bot_id,omitempty"`
@@ -29,3 +37,29 @@ const (
 	// this is only used in messages of MessageTypeJoin
 	JoinArgBotPubKey = "public-key"
 )
+
+// Encrypt converts a message to JSON and then encrypts it, returning the bytes
+func (m *Message) Encrypt(pub *rsa.PublicKey) ([]byte, error) {
+	msgJSON, err := json.Marshal(m)
+	if err != nil {
+		return nil, fmt.Errorf("could not marshal message: %s", err)
+	}
+	msgEncr, err := encryption.EncryptMessage(msgJSON, pub)
+	if err != nil {
+		return nil, fmt.Errorf("could not encrypt message: %s", err)
+	}
+	return msgEncr, nil
+}
+
+// DecryptMessage  decrypts a JSON message, and then unmarshals it onto a Message type
+func DecryptMessage(m []byte, priv *rsa.PrivateKey) (*Message, error) {
+	msgJSON, err := encryption.DecryptMessage(m, priv)
+	if err != nil {
+		return nil, fmt.Errorf("could not decrypt command: %s", err)
+	}
+	var msg Message
+	if err = json.Unmarshal(msgJSON, &msg); err != nil {
+		return nil, fmt.Errorf("could not unmarshal command: %s", err)
+	}
+	return &msg, nil
+}

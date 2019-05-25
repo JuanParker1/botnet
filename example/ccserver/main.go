@@ -9,7 +9,7 @@ import (
 
 func main() {
 	ss, err := sslmgr.NewServer(sslmgr.ServerConfig{
-		Handler:      ccserver.NewCCService(),
+		Handler:      ccserver.NewCommandAndControlService(),
 		Hostnames:    []string{"botmaster.adrianosela.com"},
 		ServeSSLFunc: func() bool { return false }, // for now
 	})
