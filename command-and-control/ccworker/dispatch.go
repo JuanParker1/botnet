@@ -58,7 +58,7 @@ func DispatchNewBot(w http.ResponseWriter, r *http.Request, msgDecryptKey *rsa.P
 	return bot, nil
 }
 
-// GreafulShutdown closes a bot owkrer's outbound-command channel
-func (b *BotWorker) GreafulShutdown() {
+// GracefulShutdown closes a bot owkrer's outbound-command channel
+func (b *BotWorker) GracefulShutdown() {
 	close(b.cmdOutChan)
 }

