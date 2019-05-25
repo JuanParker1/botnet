@@ -46,12 +46,6 @@ func (cc *CommandAndControl) StartBotnet() {
 	}
 }
 
-// EnrolBot registers a bot to the botnet
-func (cc *CommandAndControl) EnrolBot(bot *ccworker.BotWorker) {
-	cc.bots[bot.ID] = bot
-	log.Printf("[cmd&ctrl] bot %s joined net", bot.ID)
-}
-
 // ReleaseBot de registers a bot from a botnet
 func (cc *CommandAndControl) ReleaseBot(id string) {
 	if bot, ok := cc.bots[id]; ok {
@@ -112,5 +106,6 @@ func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter,
 		log.Printf(" [cmd&ctrl] there was a failed bot dispatch for %s: %s", r.RemoteAddr, r.UserAgent())
 		return
 	}
-	cc.EnrolBot(bot)
+	cc.bots[bot.ID] = bot
+	log.Printf("[cmd&ctrl] bot %s joined net", bot.ID)
 }
