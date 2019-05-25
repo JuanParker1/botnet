@@ -68,14 +68,14 @@ func (b *Bot) Run() {
 // HandleCommandFromCC handles a single command from the command and control server
 func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 	switch c.Type {
-	case protocol.CommandTypeWelcome:
-		log.Printf("[cmd&ctrl] WELCOME!!! joined botnet at unix time: %d", time.Now().Unix())
+	case protocol.CommandTypeAccepted:
+		log.Printf("[cmd&ctrl] [[%s]] joined botnet at unix time: %d", c.Type, time.Now().Unix())
 		return nil
 	case protocol.CommandTypePing:
-		log.Printf("[cmd&ctrl] PING!!! pinged by command and control at %d. full command: %v", time.Now().Unix(), *c)
+		log.Printf("[cmd&ctrl] [[%s]] pinged by command and control at %d. full command: %v", c.Type, time.Now().Unix(), *c)
 		return b.SendMessageToCC(&protocol.Message{Type: protocol.MessageTypePong})
 	default:
-		log.Printf("received unknown event type at %d. full command: %v", time.Now().Unix(), *c)
+		log.Printf("[cmd&ctrl] [[%s]] unhandled event type at %d. full command: %v", c.Type, time.Now().Unix(), *c)
 		return nil
 	}
 }
