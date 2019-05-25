@@ -73,6 +73,7 @@ func (b *BotCtrl) reader() {
 			log.Printf("could not unmarshal message from bot %s: %s", b.id, err)
 			continue
 		}
+		msg.BotID = b.id // attach bot ID to message
 		b.CC.recvMsgChan <- &msg
 	}
 }

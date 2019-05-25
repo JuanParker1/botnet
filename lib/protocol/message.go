@@ -2,7 +2,8 @@ package protocol
 
 // Message is a slave-to-master message or response
 type Message struct {
-	ReqID string      `json:"omitempty,id"`
+	BotID string      `json:"bot_id,omitempty"`
+	ReqID string      `json:"req_id,omitempty"`
 	Type  MessageType `json:"type"`
 	Args  MessageArgs `json:"args"`
 }
@@ -16,6 +17,8 @@ type MessageArgs map[string]string
 var (
 	// MessageTypeJoin is a the message type for a join request
 	MessageTypeJoin = MessageType("JOIN")
+	// MessageTypePong is a the response message type for a PING command
+	MessageTypePong = MessageType("PONG")
 	/*
 	 * add message types here
 	 */

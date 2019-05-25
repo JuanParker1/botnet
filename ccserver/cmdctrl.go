@@ -31,13 +31,12 @@ func NewCmdAndCtrl() (*CommandAndControl, error) {
 	}, nil
 }
 
-// Start begins communication
-func (cc *CommandAndControl) Start() {
+// StartBotnet begins botnet communication
+func (cc *CommandAndControl) StartBotnet() {
 	for {
 		select {
-		// handle the next message
-		case event := <-cc.recvMsgChan:
-			cc.handleMessage(event)
+		case msg := <-cc.recvMsgChan:
+			cc.HandleBotMessage(msg)
 		}
 	}
 }
@@ -45,37 +44,48 @@ func (cc *CommandAndControl) Start() {
 // EnrolBot registers a bot to the botnet
 func (cc *CommandAndControl) EnrolBot(bot *BotCtrl) {
 	cc.bots[bot.id] = bot
-	log.Printf("[%s] joined net", bot.id)
 	go bot.writer()
 	go bot.reader()
-	// send welcome back to slave
+	log.Printf("[%s] joined net", bot.id)
+	// let bot know enrolment succeeded
 	bot.CommandChan <- &protocol.Command{Type: protocol.CommandTypeWelcome}
+	bot.CommandChan <- &protocol.Command{Type: protocol.CommandTypePing}
 }
 
-// DeregisterBot deregisters a bot from a botnet
-func (cc *CommandAndControl) DeregisterBot(botID string) {
-	if bot, ok := cc.bots[botID]; ok {
-		delete(cc.bots, botID)
+// ReleaseBot de registers a bot from a botnet
+func (cc *CommandAndControl) ReleaseBot(id string) {
+	if bot, ok := cc.bots[id]; ok {
+		delete(cc.bots, id)
 		close(bot.CommandChan)
 	}
-	log.Printf("[%s] left net", botID)
+	log.Printf("[%s] left net", id)
 }
 
-func (cc *CommandAndControl) handleMessage(msg *protocol.Message) {
-	//TODO: handle incoming messages from slaves
-	log.Println("received message from slave")
-	log.Println(msg)
+// HandleBotMessage handles a single given message
+func (cc *CommandAndControl) HandleBotMessage(msg *protocol.Message) {
+	switch msg.Type {
+	case protocol.MessageTypePong:
+		log.Printf("[pong] %v", msg)
+		return
+	default:
+		log.Printf("received message of unhandled type: %v", msg)
+		return
+	}
 }
 
-func (cc *CommandAndControl) broadcastCommand(cmd *protocol.Command) {
+// BroadcastCommand broadcasts a command to all bots
+func (cc *CommandAndControl) BroadcastCommand(cmd *protocol.Command) {
 	log.Printf("[MASTER] broadcasting message to %d slaves\n", len(cc.bots))
 	for botID := range cc.bots {
-		select {
-		case cc.bots[botID].CommandChan <- cmd:
-		default:
-			close(cc.bots[botID].CommandChan)
-			delete(cc.bots, botID)
-			log.Printf("[%s] left net", botID)
-		}
+		cc.SendCommandToBot(cmd, botID)
+	}
+}
+
+// SendCommandToBot sends a command to only one given bot
+func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, id string) {
+	select {
+	case cc.bots[id].CommandChan <- cmd:
+	default:
+		cc.ReleaseBot(id)
 	}
 }

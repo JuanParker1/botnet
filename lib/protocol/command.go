@@ -19,6 +19,8 @@ var (
 	// CommandTypeWelcome is the response to a successful botnet join attempt
 	// from a slave
 	CommandTypeWelcome = CommandType("WELCOME")
+	// CommandTypePing requests a PONG from bots, allowing calculations of latency
+	CommandTypePing = CommandType("PING")
 	/*
 	 * add command types here
 	 */
