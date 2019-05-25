@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	b, err := bot.NewBot("7a18d232.ngrok.io")
+	b, err := bot.NewBot("f57f4123.ngrok.io")
 	if err != nil {
 		log.Fatal(err)
 	}

