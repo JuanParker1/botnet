@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/adrianosela/botnet/ccserver"
+	"github.com/adrianosela/botnet/command-and-control/ccserver"
 	"github.com/adrianosela/sslmgr"
 )
 

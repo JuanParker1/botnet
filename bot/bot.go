@@ -55,7 +55,7 @@ func (b *Bot) Run() {
 			break
 		}
 		// discard all non binary messages
-		if msgType != 2 {
+		if msgType != websocket.BinaryMessage {
 			continue
 		}
 		jsonMsg, err := encryption.DecryptMessage(encryptedMessage, b.cmdDecryptKey)

@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/adrianosela/botnet/command-and-control/ccworker"
 	"github.com/adrianosela/botnet/lib/protocol"
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
@@ -59,7 +60,7 @@ func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter,
 		return
 	}
 	// create new bot bontroller
-	botController, err := NewBotCtrl(cc, botPubKey, conn)
+	botController, err := ccworker.NewBotWorker(cc.msgDecryptKey, botPubKey, conn, cc.recvMsgChan)
 	if err != nil {
 		log.Printf("could not create new slave controller for new slave: %s", err)
 		return

