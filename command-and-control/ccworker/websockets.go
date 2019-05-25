@@ -52,7 +52,7 @@ func (b *BotWorker) writer() {
 	}()
 	for {
 		select {
-		case cmd, ok := <-b.CmdOutChan:
+		case cmd, ok := <-b.cmdOutChan:
 			b.wsConn.SetWriteDeadline(time.Now().Add(writeWait))
 			if !ok {
 				log.Println("we shouldnt get here though")

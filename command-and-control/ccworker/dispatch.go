@@ -19,7 +19,7 @@ type BotWorker struct {
 	cmdEncryptKey *rsa.PublicKey
 	msgDecryptKey *rsa.PrivateKey
 	wsConn        *websocket.Conn
-	CmdOutChan    chan *protocol.Command
+	cmdOutChan    chan *protocol.Command
 	msgFwdChan    chan *protocol.Message
 }
 
@@ -47,18 +47,18 @@ func DispatchNewBot(w http.ResponseWriter, r *http.Request, msgDecryptKey *rsa.P
 		cmdEncryptKey: pubKey,
 		msgDecryptKey: msgDecryptKey,
 		wsConn:        conn,
-		CmdOutChan:    make(chan *protocol.Command),
+		cmdOutChan:    make(chan *protocol.Command),
 		msgFwdChan:    msgFwdChan,
 	}
 	go bot.writer()
 	go bot.reader()
 	// let bot know enrolment succeeded and ping for data
-	bot.CmdOutChan <- &protocol.Command{Type: protocol.CommandTypeWelcome}
-	bot.CmdOutChan <- &protocol.Command{Type: protocol.CommandTypePing}
+	bot.cmdOutChan <- &protocol.Command{Type: protocol.CommandTypeWelcome}
+	bot.cmdOutChan <- &protocol.Command{Type: protocol.CommandTypePing}
 	return bot, nil
 }
 
 // GreafulShutdown closes a bot owkrer's outbound-command channel
 func (b *BotWorker) GreafulShutdown() {
-	close(b.CmdOutChan)
+	close(b.cmdOutChan)
 }
