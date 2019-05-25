@@ -1,0 +1,6 @@
+version: "3.7"
+services:
+  bot:
+    image: bot_image:latest
+    deploy:
+      replicas: 10
