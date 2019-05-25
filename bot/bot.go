@@ -97,5 +97,5 @@ func (b *Bot) SendMessageToCC(msg *protocol.Message) error {
 	if err != nil {
 		return fmt.Errorf("could not encrypt message: %s", err)
 	}
-	return b.ccConnection.WriteMessage(protocol.WebsocketMessageFormatBinary, msgEncr)
+	return b.ccConnection.WriteMessage(websocket.BinaryMessage, msgEncr)
 }
