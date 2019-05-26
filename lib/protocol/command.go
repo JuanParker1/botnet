@@ -29,6 +29,8 @@ var (
 	CommandTypeAccepted = CommandType("ACCEPTED")
 	// CommandTypePing requests a PONG from bots, allowing calculations of latency
 	CommandTypePing = CommandType("PING")
+	// CommandTypeSysInfo requests system information from bots
+	CommandTypeSysInfo = CommandType("SYS_INFO")
 	/*
 	 * add command types here
 	 */

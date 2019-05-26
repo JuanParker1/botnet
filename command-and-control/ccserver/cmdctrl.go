@@ -48,8 +48,10 @@ func NewCommandAndControl() (*CommandAndControl, error) {
 func (cc *CommandAndControl) HandleBotMessage(msg *protocol.Message) {
 	switch msg.Type {
 	case protocol.MessageTypePong:
-		log.Printf("[cmd&ctrl] [[%s]] %v", msg.Type, msg)
+		log.Printf("[bot %s] [[%s]] %v", msg.BotID, msg.Type, msg)
 		return
+	case protocol.MessageTypeSysInfo:
+		log.Printf("[bot %s] [[%s]] %v", msg.BotID, msg.Type, msg)
 	default:
 		log.Printf("received message of unhandled type: %v", msg)
 		return

@@ -23,10 +23,12 @@ type MessageType string
 type MessageArgs map[string]string
 
 var (
-	// MessageTypeJoin is a the message type for a join request
+	// MessageTypeJoin is the message type for a JOIN request
 	MessageTypeJoin = MessageType("JOIN")
-	// MessageTypePong is a the response message type for a PING command
+	// MessageTypePong is the response message type for a PING command
 	MessageTypePong = MessageType("PONG")
+	// MessageTypeSysInfo is the response message type for a SYS_INFO command
+	MessageTypeSysInfo = MessageType("SYS_INFO")
 	/*
 	 * add message types here
 	 */
@@ -36,6 +38,9 @@ const (
 	// JoinArgBotPubKey is the argument name for the public key
 	// this is only used in messages of MessageTypeJoin
 	JoinArgBotPubKey = "public-key"
+
+	// SysInfoArgHoststat TODO
+	SysInfoArgHoststat = "host-stat"
 )
 
 // Encrypt converts a message to JSON and then encrypts it, returning the bytes
