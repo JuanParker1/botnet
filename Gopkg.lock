@@ -11,6 +11,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:5fe0678d54379cd0265a61370c0ee7fcba0e5929926c3280ded24e6f9cb83fc2"
+  name = "github.com/adrianosela/packets"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "7d88e9566e0ed4c73563d8dab66962974416ca82"
+
+[[projects]]
+  branch = "master"
   digest = "1:f242a0540089e94e149be4aecf15178fecf7eb4818d4bed325fab880ffd957b4"
   name = "github.com/adrianosela/sslmgr"
   packages = ["."]
@@ -142,6 +150,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
+    "github.com/adrianosela/packets",
     "github.com/adrianosela/sslmgr",
     "github.com/gorilla/mux",
     "github.com/gorilla/websocket",
